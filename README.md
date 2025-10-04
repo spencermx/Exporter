@@ -18,9 +18,9 @@ Users can click a tile to view the full conversation in an expanded viewer, with
 
 ### Export
 
-#### Export Started
-<img width="655" height="538" alt="exporting" src="https://github.com/user-attachments/assets/ed9ac912-726a-41aa-a27e-1ee024d0d1b8" />
+#### Start Export
+<img width="1224" height="538" alt="exporting" src="https://github.com/user-attachments/assets/ed9ac912-726a-41aa-a27e-1ee024d0d1b8" />
 
 #### Export Complete
-<img width="1224" height="399" alt="exportsuccess" src="https://github.com/user-attachments/assets/31413d33-a597-418b-88ab-a6545d185388" />
+<img width="1224" height="538" alt="exportsuccess" src="https://github.com/user-attachments/assets/31413d33-a597-418b-88ab-a6545d185388" />
 
