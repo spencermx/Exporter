@@ -1,4 +1,3 @@
-// src/components/GrokTile.tsx
 import React from 'react';
 
 interface GrokTileProps {
@@ -9,6 +8,10 @@ interface GrokTileProps {
 }
 
 const GrokTile: React.FC<GrokTileProps> = ({ title, description, onClick }) => {
+  
+  let x = 10;
+  console.log(x);
+
   return (
     <div
       onClick={onClick}

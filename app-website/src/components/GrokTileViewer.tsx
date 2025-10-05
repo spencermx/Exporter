@@ -1,4 +1,3 @@
-// src/components/GrokTileViewer.tsx
 import React from "react";
 
 interface GrokTileViewerProps {
@@ -16,6 +15,9 @@ const GrokTileViewer: React.FC<GrokTileViewerProps> = ({
   onEdit,
   onDelete,
 }) => {
+  let x = 10;
+  console.log(x);
+
   return (
     <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6 max-w-2xl mx-auto shadow-lg">
       <button

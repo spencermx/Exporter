@@ -10,11 +10,16 @@
     "128": "icons/icon-128.png"
   },
   "permissions": ["tabs", "scripting", "storage", "clipboardRead"],
-  "host_permissions": ["https://grok.com/*"],
+  "host_permissions": ["https://grok.com/*", "http://localhost:3000/*"],
   "content_scripts": [
     {
       "matches": ["https://grok.com/*"],
       "js": ["content-script.js"]
+    },
+    {
+      "matches": ["http://localhost:3000/*"],
+      "js": ["site-content-script.js"],
+      "run_at": "document_end"
     }
   ],
   "action": {
