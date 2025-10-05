@@ -14,8 +14,8 @@ window.addEventListener('message', (event) => {
           if (Array.isArray(value) && value.length >= 1) {
             const id = key.split('_')[1];
             const title = value[0];
-            const description = value.slice(1).join('\n');
-            chatEntries.push({ id, title, description });
+            const responses = value.slice(1);
+            chatEntries.push({ id, title, responses });
           }
         } catch (error) {
           console.error(`Error parsing stored item ${key}:`, error);

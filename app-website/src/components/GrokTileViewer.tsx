@@ -1,50 +1,42 @@
+import { ChatData } from "@/types/chatData";
 import React from "react";
 
 interface GrokTileViewerProps {
-  title: string;
-  description: string;
+  chatData: ChatData;
   onClose: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
 }
 
-const GrokTileViewer: React.FC<GrokTileViewerProps> = ({
-  title,
-  description,
-  onClose,
-  onEdit,
-  onDelete,
-}) => {
-  let x = 10;
+const GrokTileViewer: React.FC<GrokTileViewerProps> = (props) => {
+  const x = 10;
   console.log(x);
-
   return (
-    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6 max-w-2xl mx-auto shadow-lg">
-      <button
-        onClick={onClose}
-        className="mb-4 text-[#58a6ff] hover:underline transition duration-300 ease-in-out"
+    <div
+      className="bg-[#1e252d] border border-[#3a4047] rounded-lg p-4 mx-auto overflow-hidden"
+      style={{ width: "55vw", height: "75vh", boxSizing: "border-box" }}
+    >
+      <div
+        className="overflow-y-auto h-full"
+        style={{ scrollbarWidth: "thin", scrollbarColor: "#4a5568 #1e252d" }}
       >
-        Back to Grid
-      </button>
-      <h1 className="text-2xl font-bold mb-2 text-[#ffffff]">{title}</h1>
-      <p className="text-base mb-4 text-[#c9d1d9]">{description}</p>
-      <div className="flex space-x-4">
-        {onEdit && (
-          <button
-            onClick={onEdit}
-            className="bg-[#21262d] text-[#c9d1d9] px-4 py-2 rounded border border-[#30363d] font-semibold hover:bg-[#30363d] hover:border-[#58a6ff] transition duration-300 ease-in-out hover:translate-y-[-2px] focus:outline-none focus:ring-2 focus:ring-[#58a6ff] focus:ring-opacity-50"
-          >
-            Edit
-          </button>
-        )}
-        {onDelete && (
-          <button
-            onClick={onDelete}
-            className="bg-[#21262d] text-[#c9d1d9] px-4 py-2 rounded border border-[#30363d] font-semibold hover:bg-[#30363d] hover:border-[#f85149] transition duration-300 ease-in-out hover:translate-y-[-2px] focus:outline-none focus:ring-2 focus:ring-[#f85149] focus:ring-opacity-50"
-          >
-            Delete
-          </button>
-        )}
+        <h1 className="text-xl font-semibold mb-2 text-[#e0e0e0]">
+          {props.chatData.title}
+        </h1>
+        {props.chatData.responses.map((response, index) => {
+          const isUser = index % 2 === 0;
+          return (
+<p
+  key={index}
+  className={`
+    text-sm text-white leading-relaxed whitespace-pre-wrap mb-3 p-3 rounded
+    ${isUser ? "bg-purple-500/20" : "bg-teal-500/20"}
+  `}
+>
+  {response}
+</p>
+          );
+        })}
       </div>
     </div>
   );
