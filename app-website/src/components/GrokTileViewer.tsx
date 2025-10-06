@@ -1,11 +1,10 @@
 import { ChatData } from "@/types/chatData";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { FaCopy, FaCheck } from "react-icons/fa";
 import RendererPretty from "./RendererPretty";
 import RendererRaw from "./RendererRaw";
 import RendererJson from "./RendererJson";
-
-type ViewMode = "pretty" | "raw" | "json";
+import { ViewMode } from "@/types/viewer";
 
 // Function to process response for artifacts
 const processResponse = (text: string): string => {
@@ -37,6 +36,7 @@ const GrokTileViewer: React.FC<GrokTileViewerProps> = (props) => {
         return <RendererPretty response={processed} index={index} />;
     }
   };
+
   // Function to handle copying individual response to clipboard
   const handleCopy = async (response: string, index: number) => {
     try {

@@ -5,8 +5,6 @@ import GrokTileViewer from "../components/GrokTileViewer";
 import { ChatData } from "@/types/chatData";
 import { ViewMode } from "@/types/viewer";
 
-export {};
-
 declare global {
   interface Window {
     grokExtensionInstalled?: boolean;
@@ -16,9 +14,20 @@ declare global {
 export default function Home() {
   const [tiles, setTiles] = useState<ChatData[]>([]);
   const [selectedTile, setSelectedTile] = useState<ChatData | null>(null);
+  const [selectedTileIndex, setSelectedTileIndex] = useState<number>(-1);
   const [isTestMode, setIsTestMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [defaultViewMode, setDefaultViewMode] = useState<ViewMode>("pretty");
+
+  // Filter tiles based on search term
+  const filteredTiles = tiles.filter(
+    (tile) =>
+      tile.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tile.responses.some((response) =>
+        response.toLowerCase().includes(searchTerm.toLowerCase()),
+      ),
+  );
+
   useEffect(() => {
     const extensionInstalled = window.grokExtensionInstalled === true;
     if (extensionInstalled) {
@@ -52,22 +61,49 @@ export default function Home() {
     }
   }, []);
 
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        setSelectedTileIndex((prevIndex) => {
+          let newIndex = prevIndex;
+          if (event.key === "ArrowDown") {
+            newIndex = Math.min(prevIndex + 1, filteredTiles.length - 1);
+          } else if (event.key === "ArrowUp") {
+            newIndex = Math.max(prevIndex - 1, 0);
+          }
+          if (newIndex >= 0 && newIndex < filteredTiles.length) {
+            setSelectedTile(filteredTiles[newIndex]);
+          } else {
+            setSelectedTile(null);
+          }
+          return newIndex;
+        });
+      } else if (event.key === "Escape" && selectedTile) {
+        event.preventDefault();
+        setSelectedTile(null);
+        setSelectedTileIndex(-1);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [filteredTiles]);
+
   const onDelete = (tile: ChatData) => {
     if (isTestMode) {
       setTiles(tiles.filter((t) => t.id !== tile.id));
     } else {
       window.postMessage({ type: "deleteChat", data: tile }, "*");
     }
+    // Reset selection if the deleted tile was selected
+    if (selectedTile?.id === tile.id) {
+      setSelectedTile(null);
+      setSelectedTileIndex(-1);
+    }
   };
-
-  // Filter tiles based on search term
-  const filteredTiles = tiles.filter(
-    (tile) =>
-      tile.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tile.responses.some((response) =>
-        response.toLowerCase().includes(searchTerm.toLowerCase()),
-      ),
-  );
 
   // Handle view mode change
   const handleViewModeChange = (
@@ -77,59 +113,98 @@ export default function Home() {
     setDefaultViewMode(newMode);
   };
 
+  // Handle sidebar item click
+  const handleSidebarClick = (tile: ChatData, index: number) => {
+    setSelectedTile(tile);
+    setSelectedTileIndex(index);
+  };
+
+  // Handle tile click from grid
+  const handleTileClick = (tile: ChatData) => {
+    const index = filteredTiles.findIndex((t) => t.id === tile.id);
+    setSelectedTile(tile);
+    setSelectedTileIndex(index);
+  };
+
   return (
-    <main className="min-h-screen bg-[#0d1117] text-[#c9d1d9] p-8 flex flex-col items-center relative">
-      <div className="w-full max-w-6xl mb-6">
-        {/* View Mode Dropdown */}
-        <div className="mb-4">
-          <label htmlFor="viewMode" className="mr-2">
-            Default View Mode:
-          </label>
-          <select
-            id="viewMode"
-            value={defaultViewMode}
-            onChange={handleViewModeChange}
-            className="p-2 rounded bg-[#1c2526] text-[#c9d1d9] border border-[#30363d] focus:outline-none focus:border-[#58a6ff]"
-          >
-            <option value="pretty">Pretty</option>
-            <option value="raw">Raw</option>
-            <option value="json">JSON</option>
-          </select>
-        </div>
-        <input
-          type="text"
-          placeholder="Search tiles..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full p-2 rounded bg-[#1c2526] text-[#c9d1d9] border border-[#30363d] focus:outline-none focus:border-[#58a6ff]"
-        />
-      </div>
-      <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredTiles.map((tile) => (
-          <GrokTile
-            key={tile.id}
-            chatData={tile}
-            onDelete={() => onDelete(tile)}
-            onClick={() => setSelectedTile(tile)}
-          />
-        ))}
-      </div>
-      {selectedTile && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50"
-          onClick={() => setSelectedTile(null)}
-        >
-          <div className="" onClick={(e) => e.stopPropagation()}>
-            <GrokTileViewer
-              chatData={selectedTile}
-              defaultViewMode={defaultViewMode}
-            />
+    <main className="min-h-screen bg-[#0d1117] text-[#c9d1d9] flex relative">
+      {/* Sidebar */}
+      <aside className="w-64 bg-[#161b22] p-4 border-r border-[#30363d] overflow-y-auto">
+        <h2 className="text-lg font-semibold mb-4">Conversations</h2>
+        <ul>
+          {filteredTiles.map((tile, index) => (
+            <li
+              key={tile.id}
+              className={`p-2 rounded cursor-pointer ${
+                index === selectedTileIndex
+                  ? "bg-[#2d333b]"
+                  : "hover:bg-[#1c2526]"
+              }`}
+              onClick={() => handleSidebarClick(tile, index)}
+            >
+              {tile.title}
+            </li>
+          ))}
+        </ul>
+      </aside>
+      {/* Main Content */}
+      <div className="flex-1 p-8 flex flex-col items-center">
+        <div className="w-full max-w-6xl mb-6">
+          {/* View Mode Dropdown */}
+          <div className="mb-4">
+            <label htmlFor="viewMode" className="mr-2">
+              Default View Mode:
+            </label>
+            <select
+              id="viewMode"
+              value={defaultViewMode}
+              onChange={handleViewModeChange}
+              className="p-2 rounded bg-[#1c2526] text-[#c9d1d9] border border-[#30363d] focus:outline-none focus:border-[#58a6ff]"
+            >
+              <option value="pretty">Pretty</option>
+              <option value="raw">Raw</option>
+              <option value="json">JSON</option>
+            </select>
           </div>
+          {/* Search Input */}
+          <input
+            type="text"
+            placeholder="Search tiles..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full p-2 rounded bg-[#1c2526] text-[#c9d1d9] border border-[#30363d] focus:outline-none focus:border-[#58a6ff]"
+          />
         </div>
-      )}
-      <footer className="mt-auto text-center text-sm text-[#8b949e] py-4">
-        View and manage your exports.
-      </footer>
+        <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredTiles.map((tile) => (
+            <GrokTile
+              key={tile.id}
+              chatData={tile}
+              onDelete={() => onDelete(tile)}
+              onClick={() => handleTileClick(tile)}
+            />
+          ))}
+        </div>
+        {selectedTile && (
+          <div
+            className="fixed inset-0 flex items-center justify-center z-50"
+            onClick={() => {
+              setSelectedTile(null);
+              setSelectedTileIndex(-1);
+            }}
+          >
+            <div className="" onClick={(e) => e.stopPropagation()}>
+              <GrokTileViewer
+                chatData={selectedTile}
+                defaultViewMode={defaultViewMode}
+              />
+            </div>
+          </div>
+        )}
+        <footer className="mt-auto text-center text-sm text-[#8b949e] py-4">
+          View and manage your exports.
+        </footer>
+      </div>
     </main>
   );
 }
@@ -200,16 +275,6 @@ function getTestData(): ChatData[] {
         '<xaiArtifact artifact_id="49f8dd58-d61b-42a0-8162-8e9f0eea1c77" artifact_version_id="f87fec86-6ad1-425c-8997-6e04ef29adcc" title="simple_script.py" contentType="text/python">\n# Generate a list of squares for numbers 1 to 10\nsquares = [i**2 for i in range(1, 11)]\n# Print the list of squares\nprint("Squares of numbers 1 to 10:", squares)\n# Calculate and print the sum of squares\nsum_squares = sum(squares)\nprint("Sum of squares:", sum_squares)\n# Find and print the maximum square\nmax_square = max(squares)\nprint("Maximum square:", max_square)\n</xaiArtifact>',
         "Make the script more interactive",
         '<xaiArtifact artifact_id="49f8dd58-d61b-42a0-8162-8e9f0eea1c77" artifact_version_id="1e493313-97de-4bf1-bddc-2ed7d3b24d12" title="interactive_script.py" contentType="text/python">\n# Prompt user for a range of numbers\nstart = int(input("Enter start number (1 or greater): "))\nend = int(input("Enter end number (up to 20): "))\n# Validate input\nif start < 1 or end > 20 or start > end:\n    print("Invalid range! Use numbers where 1 <= start <= end <= 20.")\nelse:\n    # Generate and print squares in the given range\n    squares = [i**2 for i in range(start, end + 1)]\n    print(f"Squares from {start} to {end}: {squares}")\n    print(f"Sum of squares: {sum(squares)}")\n    print(f"Maximum square: {max(squares)}")\n</xaiArtifact>',
-      ],
-    },
-    {
-      id: "53a347cb-5a74-42fb-8f23-6cb6c7d84c0f",
-      title: "Simple C Console Greeting Script",
-      responses: [
-        "show me a 10 line c# script",
-        'Below is a concise 10-line C# script that demonstrates a simple console application. This script reads a user\'s name from input and greets them. It can be executed in a C# scripting environment (e.g., via `dotnet-script` or a similar tool) or compiled as a basic console program.\n\n```csharp\nusing System;\n\nclass Program\n{\n    static void Main()\n    {\n        Console.WriteLine("Please enter your name:");\n        string name = Console.ReadLine();\n        Console.WriteLine($"Hello, {name}. This is a 10-line C# script.");\n    }\n}\n```',
-        "Explore C# console applications further",
-        '### Introduction to C# Console Applications\n\nC# console applications are command-line programs developed using the .NET framework, ideal for tasks such as automation, data processing, and scripting without a graphical user interface. They leverage the System.Console class for input and output operations, enabling efficient interaction via the terminal. This exploration builds upon the basic greeting script provided earlier, delving into structure, features, and practical implementations.\n\n### Basic Structure\n\nA standard C# console application follows this framework:\n\n- **Namespace and Class Declaration**: Encapsulates the code within a namespace for organization.\n- **Main Method**: Serves as the entry point, defined as `static void Main(string[] args)` to accept command-line arguments.\n- **Using Directives**: Import necessary namespaces, such as `System` for console operations.\n\nHere is an expanded example that incorporates command-line arguments and basic error handling:\n\n```csharp\nusing System;\n\nnamespace ConsoleAppExample\n{\n    class Program\n    {\n        static void Main(string[] args)\n        {\n            if (args.Length == 0)\n            {\n                Console.WriteLine("Error: No arguments provided. Usage: Program.exe <name>");\n                return;\n            }\n\n            string name = args[0];\n            Console.WriteLine($"Hello, {name}. This application demonstrates argument handling.");\n        }\n    }\n}\n```\n\nThis code checks for input arguments and provides usage instructions if none are supplied, promoting robustness.\n\n### Key Features and Best Practices\n\n- **Input and Output**: Utilize `Console.ReadLine()` for user input and `Console.WriteLine()` for formatted output. For advanced formatting, employ string interpolation or `String.Format()`.\n- **Command-Line Arguments**: Access via the `args` array in `Main()`, facilitating parameterized execution.\n- **Error Handling**: Implement try-catch blocks to manage exceptions, ensuring graceful failure. For instance:\n  ```csharp\n  try\n  {\n      int number = int.Parse(Console.ReadLine());\n      Console.WriteLine($"Parsed number: {number}");\n  }\n  catch (FormatException)\n  {\n      Console.WriteLine("Invalid input. Please enter a valid integer.");\n  }\n  ```\n- **Asynchronous Operations**: In modern .NET versions (e.g., .NET 9 as of 2025), use `async Task Main()` for non-blocking I/O, enhancing performance for network or file operations.\n- **Configuration and Dependencies**: Integrate appsettings.json for configuration or NuGet packages like System.CommandLine for sophisticated argument parsing.\n- **Deployment**: Compile to a single executable using `dotnet publish --self-contained` for cross-platform distribution.\n\n### Advanced Example: Simple Calculator\n\nConsider this console application that performs basic arithmetic, demonstrating loops and conditional logic:\n\n```csharp\nusing System;\n\nnamespace SimpleCalculator\n{\n    class Program\n    {\n        static void Main()\n        {\n            while (true)\n            {\n                Console.WriteLine("Enter operation (+, -, *, /) or \'q\' to quit:");\n                string operation = Console.ReadLine();\n                if (operation == "q") break;\n\n                Console.WriteLine("Enter first number:");\n                double num1 = double.Parse(Console.ReadLine());\n\n                Console.WriteLine("Enter second number:");\n                double num2 = double.Parse(Console.ReadLine());\n\n                double result = 0;\n                switch (operation)\n                {\n                    case "+": result = num1 + num2; break;\n                    case "-": result = num1 - num2; break;\n                    case "*": result = num1 * num2; break;\n                    case "/": result = num1 / num2; break;\n                    default: Console.WriteLine("Invalid operation."); continue;\n                }\n\n                Console.WriteLine($"Result: {result}");\n            }\n        }\n    }\n}\n```\n\nThis example uses a loop for repeated interactions and a switch statement for operation selection, illustrating control flow in console environments.\n\n### Further Resources\n\nTo deepen your understanding, consult the official Microsoft documentation on .NET console applications or explore open-source repositories on platforms like GitHub for real-world implementations. If you require specifics on a particular feature, such as integration with external libraries, please provide additional details.',
       ],
     },
   ];
