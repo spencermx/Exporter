@@ -19,7 +19,13 @@
     {
       "matches": ["http://localhost:3000/*"],
       "js": ["site-content-script.js"],
-      "run_at": "document_end"
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["injected-script.js"],
+      "matches": ["http://localhost:3000/*"]
     }
   ],
   "action": {
