@@ -1,19 +1,26 @@
 import { ChatData } from "@/types/chatData";
 import React, { useState } from "react";
 import { FaCopy, FaCheck } from "react-icons/fa"; // FaCopy and FaCheck for copy functionality
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { ExtraProps } from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"; // Dark theme for syntax highlighting
-import { CSSProperties } from "react"; // Import CSSProperties for type casting
+import { ComponentPropsWithoutRef, CSSProperties } from "react"; // For intrinsic element props and CSSProperties
 
-// Define CodeComponentProps locally to avoid import issues
-interface CodeComponentProps {
-  node?: any; // Optional, as it's not used in the component
-  inline?: boolean;
-  className?: string;
-  children?: React.ReactNode;
-  [key: string]: any; // For additional props
-}
+// Define type for code component props
+type CodeComponentProps = ComponentPropsWithoutRef<'code'> & ExtraProps & { inline?: boolean };
+
+// Define type for pre component props
+type PreComponentProps = ComponentPropsWithoutRef<'pre'> & ExtraProps;
+
+// Function to process response for artifacts
+const processResponse = (text: string): string => {
+  return text.replace(
+    /<xaiArtifact[^>]*title="([^"]*)"[^>]*contentType="text\/([^"]*)"[^>]*>([\s\S]*?)<\/xaiArtifact>/g,
+    (match, title: string, lang: string, code: string) => {
+      return `### ${title}\n\n\`\`\`${lang}\n${code.trim()}\n\`\`\``;
+    }
+  );
+};
 
 interface GrokTileViewerProps {
   chatData: ChatData;
@@ -26,8 +33,9 @@ const GrokTileViewer: React.FC<GrokTileViewerProps> = (props) => {
   // Function to handle copying individual response to clipboard
   const handleCopy = async (response: string, index: number) => {
     try {
+      const processed = processResponse(response);
       // Remove markdown code block delimiters for clean copying
-      const cleanText = response.replace(/```[a-z]*\n|\n```/g, "").trim();
+      const cleanText = processed.replace(/```[a-z]*\n|\n```/g, "").trim();
       await navigator.clipboard.writeText(cleanText);
       setCopiedIndex(index); // Show checkmark for this response
       setTimeout(() => setCopiedIndex(null), 1000); // Revert to copy icon after 1 second
@@ -40,8 +48,9 @@ const GrokTileViewer: React.FC<GrokTileViewerProps> = (props) => {
   // Function to handle copying all responses to clipboard
   const handleCopyAll = async () => {
     try {
-      const allResponses = props.chatData.responses
-        .map((response) => response.replace(/```[a-z]*\n|\n```/g, "").trim())
+      const allProcessed = props.chatData.responses.map(processResponse);
+      const allResponses = allProcessed
+        .map((processed) => processed.replace(/```[a-z]*\n|\n```/g, "").trim())
         .join("\n\n"); // Join responses with double newline
       await navigator.clipboard.writeText(allResponses);
       setCopiedIndex(-1); // Show checkmark for Copy All button
@@ -77,6 +86,7 @@ const GrokTileViewer: React.FC<GrokTileViewerProps> = (props) => {
         </div>
         {props.chatData.responses.map((response, index) => {
           const isUser = index % 2 === 0;
+          const processedResponse = processResponse(response);
           return (
             <div
               key={index}
@@ -87,6 +97,7 @@ const GrokTileViewer: React.FC<GrokTileViewerProps> = (props) => {
               <div className="pr-10">
                 <ReactMarkdown
                   components={{
+                    pre: ({ children }: PreComponentProps) => <div>{children}</div>,
                     code: ({ node, inline, className, children, ...props }: CodeComponentProps) => {
                       const match = /language-(\w+)/.exec(className || "");
                       return !inline ? (
@@ -94,7 +105,6 @@ const GrokTileViewer: React.FC<GrokTileViewerProps> = (props) => {
                           {...props}
                           style={oneDark as { [key: string]: CSSProperties }}
                           language={match?.[1] || "text"}
-                          PreTag="div"
                           customStyle={{
                             margin: 0,
                             padding: "0.75rem",
@@ -117,7 +127,7 @@ const GrokTileViewer: React.FC<GrokTileViewerProps> = (props) => {
                     ),
                   }}
                 >
-                  {response}
+                  {processedResponse}
                 </ReactMarkdown>
               </div>
               {/* Individual Copy Button */}
