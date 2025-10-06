@@ -19,12 +19,13 @@ const processResponse = (text: string): string => {
 
 interface GrokTileViewerProps {
   chatData: ChatData;
+  defaultViewMode: ViewMode;
 }
 
 const GrokTileViewer: React.FC<GrokTileViewerProps> = (props) => {
   // State to track which response was copied (index-based, null for none, -1 for all)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("pretty");
+  const [viewMode, setViewMode] = useState<ViewMode>(props.defaultViewMode);
 
   const renderByMode = (response: string, index: number) => {
     const processed = processResponse(response);
