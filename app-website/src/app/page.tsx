@@ -30,6 +30,11 @@ export default function Home() {
   );
 
   useEffect(() => {
+    // Immediately set test data and test mode
+    setIsTestMode(true);
+    setTiles(getTestData());
+    setShowExtensionAlert(true);
+
     let pollInterval: NodeJS.Timeout;
     const maxPollTime = 5000; // 5 seconds timeout
     const pollFrequency = 100; // Check every 100ms
@@ -37,12 +42,14 @@ export default function Home() {
     const checkExtension = () => {
       if (window.grokExtensionInstalled === true) {
         clearInterval(pollInterval);
+        setIsTestMode(false); // Exit test mode
+        setShowExtensionAlert(false); // Hide extension alert
         const handleMessage = (event: MessageEvent) => {
           if (event.source !== window || !event.data) return;
           switch (event.data.type) {
             case "chatDataResponse":
               if (event.data.data) {
-                setTiles(event.data.data);
+                setTiles(event.data.data); // Update tiles with extension data
               } else {
                 console.warn("No data received from extension.");
               }
@@ -60,18 +67,15 @@ export default function Home() {
       }
     };
 
+    // Start polling if extension is not immediately detected
     if (window.grokExtensionInstalled !== true) {
       pollInterval = setInterval(checkExtension, pollFrequency);
+      // Stop polling after maxPollTime, no need to reapply test data
       setTimeout(() => {
         clearInterval(pollInterval);
-        if (window.grokExtensionInstalled !== true) {
-          setIsTestMode(true);
-          setTiles(getTestData());
-          setShowExtensionAlert(true);
-        }
       }, maxPollTime);
     } else {
-      checkExtension();
+      checkExtension(); // Extension already detected, proceed immediately
     }
 
     return () => clearInterval(pollInterval);
