@@ -187,7 +187,7 @@ export default function Home() {
           {/* Search Input */}
           <input
             type="text"
-            placeholder="Search tiles..."
+            placeholder="Search..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full p-2 rounded bg-[#1c2526] text-[#c9d1d9] border border-[#30363d] focus:outline-none focus:border-[#58a6ff]"
