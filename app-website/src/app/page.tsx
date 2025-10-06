@@ -173,8 +173,17 @@ export default function Home() {
         {showExtensionAlert && (
           <div className="w-full max-w-6xl mb-6 bg-[#2d333b] border border-[#58a6ff] rounded-lg p-4 flex justify-between items-center">
             <p className="text-[#c9d1d9]">
-              The Grok extension is not installed. Note: Full functionality is
-              not yet available in test mode.
+              The{" "}
+              <a
+                href="https://github.com/spencermx/Exporter"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-400 underline hover:text-blue-600"
+              >
+                Grok Exporter extension
+              </a>{" "}
+              is not installed. Note: Full functionality is not available in
+              test mode.
             </p>
             <button
               onClick={() => setShowExtensionAlert(false)}
