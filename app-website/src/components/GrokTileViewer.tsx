@@ -1,6 +1,19 @@
 import { ChatData } from "@/types/chatData";
 import React, { useState } from "react";
 import { FaCopy, FaCheck } from "react-icons/fa"; // FaCopy and FaCheck for copy functionality
+import ReactMarkdown from "react-markdown";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"; // Dark theme for syntax highlighting
+import { CSSProperties } from "react"; // Import CSSProperties for type casting
+
+// Define CodeComponentProps locally to avoid import issues
+interface CodeComponentProps {
+  node?: any; // Optional, as it's not used in the component
+  inline?: boolean;
+  className?: string;
+  children?: React.ReactNode;
+  [key: string]: any; // For additional props
+}
 
 interface GrokTileViewerProps {
   chatData: ChatData;
@@ -13,7 +26,9 @@ const GrokTileViewer: React.FC<GrokTileViewerProps> = (props) => {
   // Function to handle copying individual response to clipboard
   const handleCopy = async (response: string, index: number) => {
     try {
-      await navigator.clipboard.writeText(response);
+      // Remove markdown code block delimiters for clean copying
+      const cleanText = response.replace(/```[a-z]*\n|\n```/g, "").trim();
+      await navigator.clipboard.writeText(cleanText);
       setCopiedIndex(index); // Show checkmark for this response
       setTimeout(() => setCopiedIndex(null), 1000); // Revert to copy icon after 1 second
     } catch (err) {
@@ -25,7 +40,9 @@ const GrokTileViewer: React.FC<GrokTileViewerProps> = (props) => {
   // Function to handle copying all responses to clipboard
   const handleCopyAll = async () => {
     try {
-      const allResponses = props.chatData.responses.join("\n\n"); // Join responses with double newline
+      const allResponses = props.chatData.responses
+        .map((response) => response.replace(/```[a-z]*\n|\n```/g, "").trim())
+        .join("\n\n"); // Join responses with double newline
       await navigator.clipboard.writeText(allResponses);
       setCopiedIndex(-1); // Show checkmark for Copy All button
       setTimeout(() => setCopiedIndex(null), 1000); // Revert to copy icon after 1 second
@@ -67,11 +84,42 @@ const GrokTileViewer: React.FC<GrokTileViewerProps> = (props) => {
                 isUser ? "bg-[#2a323a]/80" : "bg-[#3a4047]/80"
               }`}
             >
-              <p
-                className="text-sm text-[#c9d1d9] leading-relaxed whitespace-pre-wrap pr-10"
-              >
-                {response}
-              </p>
+              <div className="pr-10">
+                <ReactMarkdown
+                  components={{
+                    code: ({ node, inline, className, children, ...props }: CodeComponentProps) => {
+                      const match = /language-(\w+)/.exec(className || "");
+                      return !inline ? (
+                        <SyntaxHighlighter
+                          {...props}
+                          style={oneDark as { [key: string]: CSSProperties }}
+                          language={match?.[1] || "text"}
+                          PreTag="div"
+                          customStyle={{
+                            margin: 0,
+                            padding: "0.75rem",
+                            borderRadius: "0.25rem",
+                            backgroundColor: "#1e252d",
+                          }}
+                        >
+                          {String(children).replace(/\n$/, "")}
+                        </SyntaxHighlighter>
+                      ) : (
+                        <code className="text-[#c9d1d9] bg-[#1e252d] px-1 rounded" {...props}>
+                          {children}
+                        </code>
+                      );
+                    },
+                    p: ({ children }) => (
+                      <p className="text-sm text-[#c9d1d9] leading-relaxed whitespace-pre-wrap mb-2">
+                        {children}
+                      </p>
+                    ),
+                  }}
+                >
+                  {response}
+                </ReactMarkdown>
+              </div>
               {/* Individual Copy Button */}
               <button
                 onClick={() => handleCopy(response, index)}
