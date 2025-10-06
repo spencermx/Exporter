@@ -1,16 +1,11 @@
 import { ChatData } from "@/types/chatData";
 import React, { useState } from "react";
-import { FaCopy, FaCheck } from "react-icons/fa"; // FaCopy and FaCheck for copy functionality
-import ReactMarkdown, { ExtraProps } from "react-markdown";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"; // Dark theme for syntax highlighting
-import { ComponentPropsWithoutRef, CSSProperties } from "react"; // For intrinsic element props and CSSProperties
+import { FaCopy, FaCheck } from "react-icons/fa";
+import RendererPretty from "./RendererPretty";
+import RendererRaw from "./RendererRaw";
+import RendererJson from "./RendererJson";
 
-// Define type for code component props
-type CodeComponentProps = ComponentPropsWithoutRef<'code'> & ExtraProps & { inline?: boolean };
-
-// Define type for pre component props
-type PreComponentProps = ComponentPropsWithoutRef<'pre'> & ExtraProps;
+type ViewMode = "pretty" | "raw" | "json";
 
 // Function to process response for artifacts
 const processResponse = (text: string): string => {
@@ -18,7 +13,7 @@ const processResponse = (text: string): string => {
     /<xaiArtifact[^>]*title="([^"]*)"[^>]*contentType="text\/([^"]*)"[^>]*>([\s\S]*?)<\/xaiArtifact>/g,
     (match, title: string, lang: string, code: string) => {
       return `### ${title}\n\n\`\`\`${lang}\n${code.trim()}\n\`\`\``;
-    }
+    },
   );
 };
 
@@ -29,7 +24,18 @@ interface GrokTileViewerProps {
 const GrokTileViewer: React.FC<GrokTileViewerProps> = (props) => {
   // State to track which response was copied (index-based, null for none, -1 for all)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("pretty");
 
+  const renderByMode = (response: string, index: number) => {
+    const processed = processResponse(response);
+    switch (viewMode) {
+      case "raw":
+        return <RendererRaw response={response} index={index} />;
+      case "pretty":
+      default:
+        return <RendererPretty response={processed} index={index} />;
+    }
+  };
   // Function to handle copying individual response to clipboard
   const handleCopy = async (response: string, index: number) => {
     try {
@@ -45,16 +51,26 @@ const GrokTileViewer: React.FC<GrokTileViewerProps> = (props) => {
     }
   };
 
-  // Function to handle copying all responses to clipboard
   const handleCopyAll = async () => {
     try {
-      const allProcessed = props.chatData.responses.map(processResponse);
-      const allResponses = allProcessed
-        .map((processed) => processed.replace(/```[a-z]*\n|\n```/g, "").trim())
-        .join("\n\n"); // Join responses with double newline
-      await navigator.clipboard.writeText(allResponses);
-      setCopiedIndex(-1); // Show checkmark for Copy All button
-      setTimeout(() => setCopiedIndex(null), 1000); // Revert to copy icon after 1 second
+      let textToCopy: string;
+
+      if (viewMode === "json") {
+        // Copy full chatData as pretty JSON
+        textToCopy = JSON.stringify(props.chatData, null, 2);
+      } else {
+        // Copy all responses (processed for artifacts) as plain text
+        const allProcessed = props.chatData.responses.map(processResponse);
+        textToCopy = allProcessed
+          .map((processed) =>
+            processed.replace(/```[a-z]*\n|\n```/g, "").trim(),
+          )
+          .join("\n\n");
+      }
+
+      await navigator.clipboard.writeText(textToCopy);
+      setCopiedIndex(-1); // Indicate all copied
+      setTimeout(() => setCopiedIndex(null), 1000);
     } catch (err) {
       console.error("Failed to copy all responses: ", err);
       alert("Failed to copy all responses.");
@@ -74,73 +90,75 @@ const GrokTileViewer: React.FC<GrokTileViewerProps> = (props) => {
           <h1 className="text-xl font-semibold text-[#e0e0e0]">
             {props.chatData.title}
           </h1>
-          {/* Copy All Button with right margin */}
-          <button
-            onClick={handleCopyAll}
-            className="mr-4 text-[#8b949e] hover:text-[#58a6ff] transition duration-200 flex items-center gap-2"
-            aria-label={copiedIndex === -1 ? "All responses copied" : "Copy all responses"}
-          >
-            {copiedIndex === -1 ? <FaCheck size={16} /> : <FaCopy size={16} />}
-            <span className="text-sm">Copy All</span>
-          </button>
-        </div>
-        {props.chatData.responses.map((response, index) => {
-          const isUser = index % 2 === 0;
-          const processedResponse = processResponse(response);
-          return (
-            <div
-              key={index}
-              className={`relative mb-3 p-3 rounded transition duration-200 hover:border-[#58a6ff] border border-transparent ${
-                isUser ? "bg-[#2a323a]/80" : "bg-[#3a4047]/80"
-              }`}
-            >
-              <div className="pr-10">
-                <ReactMarkdown
-                  components={{
-                    pre: ({ children }: PreComponentProps) => <div>{children}</div>,
-                    code: ({ node, inline, className, children, ...props }: CodeComponentProps) => {
-                      const match = /language-(\w+)/.exec(className || "");
-                      return !inline ? (
-                        <SyntaxHighlighter
-                          {...props}
-                          style={oneDark as { [key: string]: CSSProperties }}
-                          language={match?.[1] || "text"}
-                          customStyle={{
-                            margin: 0,
-                            padding: "0.75rem",
-                            borderRadius: "0.25rem",
-                            backgroundColor: "#1e252d",
-                          }}
-                        >
-                          {String(children).replace(/\n$/, "")}
-                        </SyntaxHighlighter>
-                      ) : (
-                        <code className="text-[#c9d1d9] bg-[#1e252d] px-1 rounded" {...props}>
-                          {children}
-                        </code>
-                      );
-                    },
-                    p: ({ children }) => (
-                      <p className="text-sm text-[#c9d1d9] leading-relaxed whitespace-pre-wrap mb-2">
-                        {children}
-                      </p>
-                    ),
-                  }}
+
+          <div className="flex items-center gap-4">
+            {/* View Mode Toggle */}
+            <div className="flex gap-1 text-sm text-[#8b949e]">
+              {(["pretty", "raw", "json"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  className={`px-2 py-0.5 rounded ${
+                    viewMode === mode
+                      ? "bg-[#2a323a] text-white"
+                      : "hover:text-white"
+                  }`}
                 >
-                  {processedResponse}
-                </ReactMarkdown>
-              </div>
-              {/* Individual Copy Button */}
-              <button
-                onClick={() => handleCopy(response, index)}
-                className="absolute bottom-2 right-2 text-[#8b949e] hover:text-[#58a6ff] transition duration-200"
-                aria-label={copiedIndex === index ? "Text copied" : "Copy response text"}
-              >
-                {copiedIndex === index ? <FaCheck size={16} /> : <FaCopy size={16} />}
-              </button>
+                  {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                </button>
+              ))}
             </div>
-          );
-        })}
+
+            <button
+              onClick={handleCopyAll}
+              className="text-[#8b949e] hover:text-[#58a6ff] transition duration-200 flex items-center gap-2"
+              aria-label={
+                copiedIndex === -1
+                  ? "All responses copied"
+                  : "Copy all responses"
+              }
+            >
+              {copiedIndex === -1 ? (
+                <FaCheck size={16} />
+              ) : (
+                <FaCopy size={16} />
+              )}
+              <span className="text-sm">Copy All</span>
+            </button>
+          </div>
+        </div>
+
+        {viewMode === "json" ? (
+          <RendererJson chatData={props.chatData} />
+        ) : (
+          props.chatData.responses.map((response, index) => {
+            const isUser = index % 2 === 0;
+            return (
+              <div
+                key={index}
+                className={`relative mb-3 p-3 rounded transition duration-200 hover:border-[#58a6ff] border border-transparent ${
+                  isUser ? "bg-[#2a323a]/80" : "bg-[#3a4047]/80"
+                }`}
+              >
+                <div className="pr-10">{renderByMode(response, index)}</div>
+
+                <button
+                  onClick={() => handleCopy(response, index)}
+                  className="absolute bottom-2 right-2 text-[#8b949e] hover:text-[#58a6ff] transition duration-200"
+                  aria-label={
+                    copiedIndex === index ? "Text copied" : "Copy response text"
+                  }
+                >
+                  {copiedIndex === index ? (
+                    <FaCheck size={16} />
+                  ) : (
+                    <FaCopy size={16} />
+                  )}
+                </button>
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );

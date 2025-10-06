@@ -5,13 +5,22 @@ import GrokTile from "../components/GrokTile";
 import GrokTileViewer from "../components/GrokTileViewer";
 import { ChatData } from "@/types/chatData";
 
+export {}; 
+
+declare global {
+  interface Window {
+    grokExtensionInstalled?: boolean;
+  }
+}
+
 export default function Home() {
   const [tiles, setTiles] = useState<ChatData[]>([]);
   const [selectedTile, setSelectedTile] = useState<ChatData | null>(null);
   const [isTestMode, setIsTestMode] = useState(false);
 
   useEffect(() => {
-    const extensionInstalled = (window as any).grokExtensionInstalled === true;
+    // const extensionInstalled = (window as any).grokExtensionInstalled === true;
+    const extensionInstalled = window.grokExtensionInstalled === true;
 
     if (extensionInstalled) {
       const handleMessage = (event: MessageEvent) => {
