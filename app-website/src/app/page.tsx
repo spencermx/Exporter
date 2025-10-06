@@ -18,6 +18,7 @@ export default function Home() {
   const [isTestMode, setIsTestMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [defaultViewMode, setDefaultViewMode] = useState<ViewMode>("pretty");
+  const [showExtensionAlert, setShowExtensionAlert] = useState<boolean>(false);
 
   // Filter tiles based on search term
   const filteredTiles = tiles.filter(
@@ -58,6 +59,7 @@ export default function Home() {
     } else {
       setIsTestMode(true);
       setTiles(getTestData());
+      setShowExtensionAlert(true); // Show alert when extension is not installed
     }
   }, []);
 
@@ -90,7 +92,7 @@ export default function Home() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [filteredTiles]);
+  }, [filteredTiles, selectedTile]);
 
   const onDelete = (tile: ChatData) => {
     if (isTestMode) {
@@ -149,6 +151,22 @@ export default function Home() {
       </aside>
       {/* Main Content */}
       <div className="flex-1 p-8 flex flex-col items-center">
+        {/* Extension Alert */}
+        {showExtensionAlert && (
+          <div className="w-full max-w-6xl mb-6 bg-[#2d333b] border border-[#58a6ff] rounded-lg p-4 flex justify-between items-center">
+            <p className="text-[#c9d1d9]">
+              The Grok extension is not installed. Note: Full functionality is not
+              yet available in test mode.
+            </p>
+            <button
+              onClick={() => setShowExtensionAlert(false)}
+              className="text-[#58a6ff] hover:text-[#8b949e] transition duration-200"
+              aria-label="Dismiss alert"
+            >
+              ✕
+            </button>
+          </div>
+        )}
         <div className="w-full max-w-6xl mb-6">
           {/* View Mode Dropdown */}
           <div className="mb-4">
