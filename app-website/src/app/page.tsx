@@ -1,4 +1,3 @@
-// src/app/page.tsx
 "use client"; // Enable client-side rendering for state management
 import React, { useState, useEffect } from "react";
 import GrokTile from "../components/GrokTile";
@@ -17,11 +16,10 @@ export default function Home() {
   const [tiles, setTiles] = useState<ChatData[]>([]);
   const [selectedTile, setSelectedTile] = useState<ChatData | null>(null);
   const [isTestMode, setIsTestMode] = useState(false);
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
   useEffect(() => {
-    // const extensionInstalled = (window as any).grokExtensionInstalled === true;
     const extensionInstalled = window.grokExtensionInstalled === true;
-
     if (extensionInstalled) {
       const handleMessage = (event: MessageEvent) => {
         if (event.source !== window || !event.data) {
@@ -42,10 +40,8 @@ export default function Home() {
             console.warn(`Unhandled message type: ${event.data.type}`);
         }
       };
-
       window.addEventListener("message", handleMessage);
       window.postMessage({ type: "getChatData" }, "*");
-
       return () => {
         window.removeEventListener("message", handleMessage);
       };
@@ -57,18 +53,33 @@ export default function Home() {
 
   const onDelete = (tile: ChatData) => {
     if (isTestMode) {
-      // Handle deletion locally in test mode
       setTiles(tiles.filter((t) => t.id !== tile.id));
     } else {
-      // Use extension for deletion if available
       window.postMessage({ type: "deleteChat", data: tile }, "*");
     }
   };
 
+  // Filter tiles based on search term
+  const filteredTiles = tiles.filter((tile) =>
+    tile.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    tile.responses.some((response) =>
+      response.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  );
+
   return (
     <main className="min-h-screen bg-[#0d1117] text-[#c9d1d9] p-8 flex flex-col items-center relative">
+      <div className="w-full max-w-6xl mb-6">
+        <input
+          type="text"
+          placeholder="Search tiles..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full p-2 rounded bg-[#1c2526] text-[#c9d1d9] border border-[#30363d] focus:outline-none focus:border-[#58a6ff]"
+        />
+      </div>
       <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {tiles.map((tile) => (
+        {filteredTiles.map((tile) => (
           <GrokTile
             key={tile.id}
             chatData={tile}
