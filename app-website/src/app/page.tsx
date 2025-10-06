@@ -30,37 +30,51 @@ export default function Home() {
   );
 
   useEffect(() => {
-    const extensionInstalled = window.grokExtensionInstalled === true;
-    if (extensionInstalled) {
-      const handleMessage = (event: MessageEvent) => {
-        if (event.source !== window || !event.data) {
-          return;
+    let pollInterval: NodeJS.Timeout;
+    const maxPollTime = 5000; // 5 seconds timeout
+    const pollFrequency = 100; // Check every 100ms
+
+    const checkExtension = () => {
+      if (window.grokExtensionInstalled === true) {
+        clearInterval(pollInterval);
+        const handleMessage = (event: MessageEvent) => {
+          if (event.source !== window || !event.data) return;
+          switch (event.data.type) {
+            case "chatDataResponse":
+              if (event.data.data) {
+                setTiles(event.data.data);
+              } else {
+                console.warn("No data received from extension.");
+              }
+              break;
+            case "deleteChatResponse":
+              window.postMessage({ type: "getChatData" }, "*");
+              break;
+            default:
+              console.warn(`Unhandled message type: ${event.data.type}`);
+          }
+        };
+        window.addEventListener("message", handleMessage);
+        window.postMessage({ type: "getChatData" }, "*");
+        return () => window.removeEventListener("message", handleMessage);
+      }
+    };
+
+    if (window.grokExtensionInstalled !== true) {
+      pollInterval = setInterval(checkExtension, pollFrequency);
+      setTimeout(() => {
+        clearInterval(pollInterval);
+        if (window.grokExtensionInstalled !== true) {
+          setIsTestMode(true);
+          setTiles(getTestData());
+          setShowExtensionAlert(true);
         }
-        switch (event.data.type) {
-          case "chatDataResponse":
-            if (event.data.data) {
-              setTiles(event.data.data);
-            } else {
-              console.warn("No data received from extension.");
-            }
-            break;
-          case "deleteChatResponse":
-            window.postMessage({ type: "getChatData" }, "*");
-            break;
-          default:
-            console.warn(`Unhandled message type: ${event.data.type}`);
-        }
-      };
-      window.addEventListener("message", handleMessage);
-      window.postMessage({ type: "getChatData" }, "*");
-      return () => {
-        window.removeEventListener("message", handleMessage);
-      };
+      }, maxPollTime);
     } else {
-      setIsTestMode(true);
-      setTiles(getTestData());
-      setShowExtensionAlert(true); // Show alert when extension is not installed
+      checkExtension();
     }
+
+    return () => clearInterval(pollInterval);
   }, []);
 
   // Handle keyboard navigation
@@ -132,7 +146,7 @@ export default function Home() {
     <main className="min-h-screen bg-[#0d1117] text-[#c9d1d9] flex relative">
       {/* Sidebar */}
       <aside className="w-64 bg-[#161b22] p-4 border-r border-[#30363d] overflow-y-auto">
-        <h2 className="text-lg font-semibold mb-4">Conversations</h2>
+        <h2 className="text-lg font-semibold mb-2">Conversations</h2>
         <ul>
           {filteredTiles.map((tile, index) => (
             <li
@@ -155,8 +169,8 @@ export default function Home() {
         {showExtensionAlert && (
           <div className="w-full max-w-6xl mb-6 bg-[#2d333b] border border-[#58a6ff] rounded-lg p-4 flex justify-between items-center">
             <p className="text-[#c9d1d9]">
-              The Grok extension is not installed. Note: Full functionality is not
-              yet available in test mode.
+              The Grok extension is not installed. Note: Full functionality is
+              not yet available in test mode.
             </p>
             <button
               onClick={() => setShowExtensionAlert(false)}
