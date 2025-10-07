@@ -182,8 +182,7 @@ export default function Home() {
               >
                 Grok Exporter extension
               </a>{" "}
-              is not installed. Note: Full functionality is not available in
-              test mode.
+              is not installed. Note: Full functionality requires the chrome extension.
             </p>
             <button
               onClick={() => setShowExtensionAlert(false)}
